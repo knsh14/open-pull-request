@@ -23,10 +23,6 @@ func GetPullRequestURL(branch string) ([]string, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get Repository struct")
 	}
-	remoteInfo, err := repo.RemoteInfo()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get repository info")
-	}
 
 	token, err := gitconfig.GithubToken()
 	if err != nil {
@@ -39,17 +35,17 @@ func GetPullRequestURL(branch string) ([]string, error) {
 	tc := oauth2.NewClient(ctx, ts)
 
 	client := github.NewClient(tc)
-	if remoteInfo.Domain != "github.com" {
-		baseURL := fmt.Sprintf("https://%s/api/v3/", remoteInfo.Domain)
+	if repo.Remote.Domain != "github.com" {
+		baseURL := fmt.Sprintf("https://%s/api/v3/", repo.Remote.Domain)
 		client, err = github.NewEnterpriseClient(baseURL, baseURL, tc)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get github enterprise client")
 		}
 	}
 
-	pulls, _, err := client.PullRequests.List(ctx, remoteInfo.Owner, remoteInfo.Repo, &github.PullRequestListOptions{
+	pulls, _, err := client.PullRequests.List(ctx, repo.Remote.Owner, repo.Remote.Repo, &github.PullRequestListOptions{
 		State: "open",
-		Head:  remoteInfo.Owner + ":" + branch,
+		Head:  repo.Remote.Owner + ":" + branch,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get list of pull requests")

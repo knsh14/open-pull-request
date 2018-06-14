@@ -21,13 +21,9 @@ func OpenCurrentBranch() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get Repository struct")
 	}
-	currentBranch, err := repo.GetCurrentBranch()
+	urls, err := github.GetPullRequestURL(repo.Head)
 	if err != nil {
-		log.Fatal(err)
-	}
-	urls, err := github.GetPullRequestURL(currentBranch)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get pullrequest url for %s", currentBranch)
+		return errors.Wrapf(err, "failed to get pullrequest url for %s", repo.Head)
 	}
 	for _, u := range urls {
 		err := browser.OpenURL(u)
@@ -48,12 +44,8 @@ func OpenAllBranches() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get Repository struct")
 	}
-	branches, err := repo.GetAllBranches()
-	if err != nil {
-		return errors.Wrap(err, "failed to get all branches")
-	}
 	var wg sync.WaitGroup
-	for _, branch := range branches {
+	for _, branch := range repo.Branches {
 		wg.Add(1)
 		go func(b string) {
 			urls, err := github.GetPullRequestURL(b)

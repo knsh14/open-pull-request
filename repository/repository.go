@@ -10,9 +10,12 @@ import (
 
 // Repository is wrapper for git repsitory
 type Repository struct {
-	repo *git.Repository
+	Remote   *RemoteInfo
+	Head     string
+	Branches []string
 }
 
+// RemoteInfo contains names to get pull requests
 type RemoteInfo struct {
 	Domain string
 	Owner  string
@@ -25,12 +28,24 @@ func NewRepository(path string) (*Repository, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to open repository")
 	}
-	return &Repository{repo: r}, nil
+	remote, err := getRemoteInfo(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get remote")
+	}
+	head, err := getCurrentBranch(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get head branch name")
+	}
+	branches, err := getAllBranches(r)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get all branch name")
+	}
+	return &Repository{Remote: remote, Head: head, Branches: branches}, nil
 }
 
 // RemoteInfo returns information of origin
-func (r *Repository) RemoteInfo() (*RemoteInfo, error) {
-	remote, err := r.repo.Remote("origin")
+func getRemoteInfo(r *git.Repository) (*RemoteInfo, error) {
+	remote, err := r.Remote("origin")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get remote origin")
 	}
@@ -94,9 +109,8 @@ func getRemoteInfoHTTPProtocol(url string) (*RemoteInfo, error) {
 }
 
 // GetCurrentBranch returns branch name of head commit
-func (r *Repository) GetCurrentBranch() (string, error) {
-
-	head, err := r.repo.Head()
+func getCurrentBranch(repo *git.Repository) (string, error) {
+	head, err := repo.Head()
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get head branch name")
 	}
@@ -104,8 +118,8 @@ func (r *Repository) GetCurrentBranch() (string, error) {
 }
 
 // GetAllBranches return all branch name in local
-func (r *Repository) GetAllBranches() ([]string, error) {
-	branches, err := r.repo.Branches()
+func getAllBranches(repo *git.Repository) ([]string, error) {
+	branches, err := repo.Branches()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get all branched in local")
 	}
