@@ -5,8 +5,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/knsh14/udemy/github"
-	"github.com/knsh14/udemy/repository"
+	"github.com/knsh14/open-pull-request/github"
+	"github.com/knsh14/open-pull-request/repository"
 	"github.com/pkg/browser"
 	"github.com/pkg/errors"
 )
@@ -21,7 +21,7 @@ func OpenCurrentBranch() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to get Repository struct")
 	}
-	urls, err := github.GetPullRequestURL(repo.Head)
+	urls, err := github.GetPullRequestURL(repo.Remote.Domain, repo.Remote.Owner, repo.Remote.Repo, repo.Head)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get pullrequest url for %s", repo.Head)
 	}
@@ -48,7 +48,7 @@ func OpenAllBranches() error {
 	for _, branch := range repo.Branches {
 		wg.Add(1)
 		go func(b string) {
-			urls, err := github.GetPullRequestURL(b)
+			urls, err := github.GetPullRequestURL(repo.Remote.Domain, repo.Remote.Owner, repo.Remote.Repo, b)
 			if err != nil {
 				log.Print(err)
 				wg.Done()
