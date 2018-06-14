@@ -13,6 +13,12 @@ type Repository struct {
 	repo *git.Repository
 }
 
+type RemoteInfo struct {
+	Domain string
+	Owner  string
+	Repo   string
+}
+
 // NewRepository creates struct to get repository information
 func NewRepository(path string) (*Repository, error) {
 	r, err := git.PlainOpen(path)
@@ -23,22 +29,68 @@ func NewRepository(path string) (*Repository, error) {
 }
 
 // RemoteInfo returns information of origin
-// TODO: work only git protocol only. need to work for http protocol
-func (r *Repository) RemoteInfo() (string, string, string, error) {
+func (r *Repository) RemoteInfo() (*RemoteInfo, error) {
 	remote, err := r.repo.Remote("origin")
 	if err != nil {
-		return "", "", "", errors.Wrap(err, "failed to get remote origin")
+		return nil, errors.Wrap(err, "failed to get remote origin")
 	}
 	if len(remote.Config().URLs) != 1 {
-		return "", "", "", errors.New("origin url is not only one")
+		return nil, errors.New("origin url is not only one")
 	}
 	url := remote.Config().URLs[0]
-	u := strings.Split(url, "@")[1]
-	v := strings.SplitN(u, ":", 2)
-	domain, path := v[0], v[1]
+	if strings.HasPrefix(url, "git") {
+		r, err := getRemoteInfoGitProtocol(url)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get remote information")
+		}
+		return r, nil
+	} else if strings.HasPrefix(url, "https") {
+		r, err := getRemoteInfoHTTPProtocol(url)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get remote information")
+		}
+		return r, nil
+	}
+	return nil, errors.New("invalid protocol")
+}
+
+func getRemoteInfoGitProtocol(url string) (*RemoteInfo, error) {
+	remote := &RemoteInfo{}
+	u := strings.Split(url, "@")
+	if len(u) != 2 {
+		return nil, errors.New("failed to divide with @")
+	}
+	v := strings.SplitN(u[1], ":", 2)
+	if len(v) != 2 {
+		return nil, errors.New("failed to divide into domain and repository path")
+	}
+	if v[0] == "" || v[1] == "" {
+		return nil, errors.New("failed to divide into domain and repository path")
+	}
+	remote.Domain = v[0]
+	path := v[1]
 	v = strings.SplitN(path, "/", 2)
-	org, repo := v[0], strings.TrimRight(v[1], ".git")
-	return domain, org, repo, nil
+	if len(v) != 2 {
+		return nil, errors.New("failed to divide into owner and repository")
+	}
+	if v[0] == "" || v[1] == "" {
+		return nil, errors.New("failed to divide into owner and repository")
+	}
+	remote.Owner, remote.Repo = v[0], strings.TrimSuffix(v[1], ".git")
+	return remote, nil
+}
+
+func getRemoteInfoHTTPProtocol(url string) (*RemoteInfo, error) {
+	u := strings.Split(url, "/")
+	if len(u) != 5 {
+		return nil, errors.New("failed to divide into parts")
+	}
+	for _, v := range u[2:] {
+		if v == "" {
+			return nil, errors.New("failed to divide into parts")
+		}
+	}
+	return &RemoteInfo{Domain: u[2], Owner: u[3], Repo: strings.TrimSuffix(u[4], ".git")}, nil
 }
 
 // GetCurrentBranch returns branch name of head commit
