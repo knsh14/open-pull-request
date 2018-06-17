@@ -2,19 +2,16 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 
-	"github.com/knsh14/udemy/executor"
+	"github.com/knsh14/open-pull-request/executor"
 )
 
 var (
-	httpPort string
-	mode     string
+	mode string
 )
 
 func init() {
-	flag.StringVar(&httpPort, "http", "", "port to work as http server mode")
 	flag.StringVar(&mode, "mode", "current", "which to open PR current branch or all branch in local")
 }
 
@@ -32,6 +29,6 @@ func main() {
 			log.Fatal(err)
 		}
 	default:
-		fmt.Println("wrong mode ")
+		log.Fatal("wrong mode")
 	}
 }
